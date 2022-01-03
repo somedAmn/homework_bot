@@ -36,6 +36,7 @@ logger.addHandler(handler)
 
 
 def send_message(bot, message):
+    """Отправлка уведомления пользователю в Telegram."""
     if bot.send_message(TELEGRAM_CHAT_ID, message):
         logging.info('Удачная отправка сообщения в Telegram')
     else:
@@ -43,6 +44,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(current_timestamp):
+    """Отправка запроса к API."""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
     response = requests.get(ENDPOINT, headers=HEADERS, params=params)
@@ -54,6 +56,7 @@ def get_api_answer(current_timestamp):
 
 
 def check_response(response):
+    """Проверка корректности ответа API."""
     if isinstance(response, list):
         homeworks = response[0].get('homeworks')
     else:
@@ -67,6 +70,7 @@ def check_response(response):
 
 
 def parse_status(homework):
+    """Формирование сообщения о статусе."""
     if isinstance(homework, list):
         homework_name = homework[0].get('homework_name')
         homework_status = homework[0].get('status')
@@ -82,6 +86,7 @@ def parse_status(homework):
 
 
 def check_tokens():
+    """Проверка переменных окружения."""
     if None in (TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, PRACTICUM_TOKEN):
         logging.critical('Отсутствуют обязательные переменные окружения')
         return False
