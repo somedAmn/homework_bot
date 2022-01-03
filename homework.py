@@ -75,8 +75,9 @@ def check_response(response):
         else:
             logger.error('Отсутствуют ожидаемые ключи в ответе API')
             raise Exception
-    except AttributeError:
-        return 'status'
+    except Exception:
+        logger.error('Ответ API не словарь')
+        raise TypeError
 
 
 def parse_status(homework):
