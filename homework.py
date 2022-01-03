@@ -71,7 +71,10 @@ def check_response(response):
     try:
         homeworks = response.get('homeworks')
         if homeworks is not None and isinstance(homeworks, list):
-            return homeworks
+            if homeworks != []:
+                return homeworks[0]
+            else:
+                return homeworks
         else:
             logger.error('Отсутствуют ожидаемые ключи в ответе API')
             raise Exception
@@ -115,7 +118,6 @@ def main():
             if homeworks:
                 message = parse_status(homeworks)
                 send_message(bot, message)
-
             current_timestamp = int(time.time())
             time.sleep(RETRY_TIME)
 
