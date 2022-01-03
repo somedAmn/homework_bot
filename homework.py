@@ -1,6 +1,8 @@
+import json
 import logging
 import os
 import time
+from http import HTTPStatus
 
 import requests
 import telegram
@@ -37,50 +39,56 @@ logger.addHandler(handler)
 
 def send_message(bot, message):
     """Отправлка уведомления пользователю в Telegram."""
-    if bot.send_message(TELEGRAM_CHAT_ID, message):
-        logging.info('Удачная отправка сообщения в Telegram')
-    else:
-        logging.error('Ошибка отправки сообщения в Telegram')
+    try:
+        bot.send_message(TELEGRAM_CHAT_ID, message)
+        logger.info('Удачная отправка сообщения в Telegram')
+    except telegram.TelegramError:
+        logger.error('Ошибка отправки сообщения в Telegram')
 
 
 def get_api_answer(current_timestamp):
     """Отправка запроса к API."""
     timestamp = current_timestamp or int(time.time())
     params = {'from_date': timestamp}
-    response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-    if response.status_code == 200:
-        return response.json()
+    try:
+        response = requests.get(ENDPOINT, headers=HEADERS, params=params)
+    except requests.exceptions.RequestException as e:
+        logger.error('Урл недоступен')
+        raise SystemExit(e)
+
+    if response.status_code == HTTPStatus.OK:
+        try:
+            return response.json()
+        except json.decoder.JSONDecodeError:
+            logger.error('Не удалось преобразовать результат запроса в json')
     else:
-        logging.error('Запрос к эндпоинту не дал статус код 200')
+        logger.error('Запрос к эндпоинту не дал статус код 200')
         raise Exception
 
 
 def check_response(response):
     """Проверка корректности ответа API."""
-    if isinstance(response, list):
-        homeworks = response[0].get('homeworks')
-    else:
+    try:
         homeworks = response.get('homeworks')
-
-    if homeworks is not None and isinstance(homeworks, list):
-        return homeworks
-    else:
-        logging.error('Отсутствуют ожидаемые ключи в ответе API')
-        raise Exception
+        if homeworks is not None and isinstance(homeworks, list):
+            return homeworks
+        else:
+            logger.error('Отсутствуют ожидаемые ключи в ответе API')
+            raise Exception
+    except AttributeError:
+        return 'status'
 
 
 def parse_status(homework):
     """Формирование сообщения о статусе."""
-    if isinstance(homework, list):
-        homework_name = homework[0].get('homework_name')
-        homework_status = homework[0].get('status')
-    else:
-        homework_name = homework.get('homework_name')
-        homework_status = homework.get('status')
-    if homework_name is None:
-        logging.error('Недокументированный статус домашней работы')
-    if homework_status is None:
-        logging.debug('В ответе отсутствует новый статус')
+    keys = ['status', 'homework_name']
+    for key in keys:
+        if key not in homework:
+            raise KeyError
+    homework_status = homework['status']
+    if homework_status not in HOMEWORK_STATUSES:
+        raise KeyError
+    homework_name = homework['homework_name']
     verdict = HOMEWORK_STATUSES[homework_status]
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
@@ -88,14 +96,15 @@ def parse_status(homework):
 def check_tokens():
     """Проверка переменных окружения."""
     if None in (TELEGRAM_TOKEN, TELEGRAM_CHAT_ID, PRACTICUM_TOKEN):
-        logging.critical('Отсутствуют обязательные переменные окружения')
+        logger.critical('Отсутствуют обязательные переменные окружения')
         return False
     return True
 
 
 def main():
     """Основная логика работы бота."""
-    check_tokens()
+    if not check_tokens():
+        raise Exception
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = int(time.time())
     while True:
