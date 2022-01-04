@@ -5,12 +5,10 @@ import time
 from http import HTTPStatus
 
 import requests
-from requests.exceptions import (
-    ConnectionError, Timeout, RequestException,
-    TooManyRedirects
-    )
 import telegram
 from dotenv import load_dotenv
+from requests.exceptions import (ConnectionError, RequestException, Timeout,
+                                 TooManyRedirects)
 
 load_dotenv()
 
@@ -79,7 +77,7 @@ def get_api_answer(current_timestamp):
 def check_response(response):
     """Проверка корректности ответа API."""
     # в test_check_response_not_dict в эту функцию передают список
-    # с одним словарём внутри, без этого try-except .get() будет 
+    # с одним словарём внутри, без этого try-except .get() будет
     # выдавать исключение AttributeError
     try:
         homeworks = response.get('homeworks')
