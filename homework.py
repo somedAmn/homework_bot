@@ -5,6 +5,10 @@ import time
 from http import HTTPStatus
 
 import requests
+from requests.exceptions import (
+    ConnectionError, Timeout, RequestException,
+    TooManyRedirects
+    )
 import telegram
 from dotenv import load_dotenv
 
@@ -52,8 +56,14 @@ def get_api_answer(current_timestamp):
     params = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=params)
-    except requests.exceptions.RequestException as e:
-        logger.error('Урл недоступен')
+    except ConnectionError:
+        logger.error("Ошибка соединения.")
+    except Timeout:
+        logger.error("Время ожидания запроса истекло.")
+    except TooManyRedirects:
+        logger.error("Слишком много редиректов.")
+    except RequestException as e:
+        logger.error("Ошибка.")
         raise SystemExit(e)
 
     if response.status_code == HTTPStatus.OK:
@@ -68,10 +78,13 @@ def get_api_answer(current_timestamp):
 
 def check_response(response):
     """Проверка корректности ответа API."""
+    # в test_check_response_not_dict в эту функцию передают список
+    # с одним словарём внутри, без этого try-except .get() будет 
+    # выдавать исключение AttributeError
     try:
         homeworks = response.get('homeworks')
         if homeworks is not None and isinstance(homeworks, list):
-            if homeworks != []:
+            if homeworks:
                 return homeworks[0]
             else:
                 return homeworks
